@@ -112,8 +112,23 @@ source "xenserver-iso" "template" {
     "<wait60>",
     "mount /dev/xvda3 /mnt<enter><wait>",
     "chroot /mnt<enter><wait>",
-    "apk add --no-cache cloud-init xe-guest-utilities openssh openssh-server-pam cloud-utils-growpart e2fsprogs e2fsprogs-extra doas<enter><wait10>",
-    "rc-update add xe-guest-utilities boot<enter>",
+    # xen-guest-agent replaces xe-guest-utilities here. The Go tools report their own version to
+    # XO as unsubstituted placeholders: PV-drivers-version comes back as
+    # "major: @PRODUCT_MAJOR_VERSION@; minor: @PRODUCT_MINOR_VERSION@; ...". That is aports issue
+    # 13506, open since 2022, and xenserver/xe-guest-utilities#167 upstream; the two point at each
+    # other and neither has moved. Measured on a guest from this template, the same VM reports
+    # real values once xen-guest-agent runs, and PV-drivers-detected flips to true.
+    #
+    # It is installed from a third-party apk repository because xen-guest-agent is packaged by no
+    # distribution, and upstream's published Linux binary is glibc so it cannot run on musl.
+    # THIS IS A STOPGAP: the repository is a personal one, unsupported, and exists only until
+    # upstream tags a release and it reaches aports. Its snapshots are versioned 0.5.0_git<date>,
+    # which apk sorts below a real 0.5.0, so a distro package supersedes it automatically.
+    # Replace these three lines with a plain `apk add xen-guest-agent` the day that happens.
+    "wget -O /etc/apk/keys/gounthar@gmail.com-6a7df537.rsa.pub https://gounthar.github.io/xen-guest-agent-apk/gounthar@gmail.com-6a7df537.rsa.pub<enter><wait5>",
+    "echo https://gounthar.github.io/xen-guest-agent-apk/v3.23/main >> /etc/apk/repositories<enter><wait>",
+    "apk add --no-cache cloud-init xen-guest-agent xen-guest-agent-openrc openssh openssh-server-pam cloud-utils-growpart e2fsprogs e2fsprogs-extra doas<enter><wait10>",
+    "rc-update add xen-guest-agent boot<enter>",
     "setup-cloud-init<enter><wait10>",
     "echo 'datasource_list: [NoCloud, ConfigDrive]'> /etc/cloud/cloud.cfg.d/02-datasource.cfg<enter>",
     "mkdir -p /usr/lib/cloud-init<enter>",
