@@ -125,7 +125,16 @@ source "xenserver-iso" "template" {
     # upstream tags a release and it reaches aports. Its snapshots are versioned 0.5.0_git<date>,
     # which apk sorts below a real 0.5.0, so a distro package supersedes it automatically.
     # Replace these three lines with a plain `apk add xen-guest-agent` the day that happens.
+    # The key is pinned by fingerprint, and that is the whole point. Fetching it from the same
+    # origin that serves the packages would prove nothing: whoever controls that site controls
+    # both, so the signature would only restate what HTTPS already says. Pinning the hash here,
+    # in a file that lives in git and gets reviewed, means substituting the key requires changing
+    # this line too. If the hash does not match, the key is removed and apk refuses the packages
+    # rather than installing something unverified.
+    # This raises the bar; it does not remove the trust. The packages are still built and signed
+    # by CI on a personal account, so a compromise of that signing secret would still be enough.
     "wget -O /etc/apk/keys/gounthar@gmail.com-6a7df537.rsa.pub https://gounthar.github.io/xen-guest-agent-apk/gounthar@gmail.com-6a7df537.rsa.pub<enter><wait5>",
+    "echo '2d30b26e05e299f457c156c0f0eb8d69b31bebe34c9d7a576289e6199fee45de  /etc/apk/keys/gounthar@gmail.com-6a7df537.rsa.pub' | sha256sum -c - || rm -f /etc/apk/keys/gounthar@gmail.com-6a7df537.rsa.pub<enter><wait5>",
     "echo https://gounthar.github.io/xen-guest-agent-apk/v3.23/main >> /etc/apk/repositories<enter><wait>",
     "apk add --no-cache cloud-init xen-guest-agent xen-guest-agent-openrc openssh openssh-server-pam cloud-utils-growpart e2fsprogs e2fsprogs-extra doas<enter><wait10>",
     "rc-update add xen-guest-agent boot<enter>",
